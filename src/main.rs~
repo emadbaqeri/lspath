@@ -1,0 +1,41 @@
+use std::process::Command;
+#[macro_use]
+extern crate prettytable;
+use prettytable::{color, format::Alignment, Attr, Cell, Table};
+
+fn exec_command() -> String {
+    if cfg!(target_os = "windows") {
+        panic!("Could Not Operate On Windows")
+    }
+
+    let command = Command::new("sh")
+        .arg("-c")
+        .arg("echo $PATH")
+        .output()
+        .expect("Failed to Execute");
+
+    String::from_utf8_lossy(&command.stdout).to_string()
+}
+
+fn main() {
+    let stdout_str = exec_command();
+    let paths: Vec<_> = stdout_str
+        .split(":/")
+        .map(|path| {
+            let path = path.trim_start_matches("/");
+            format!("/{}", path)
+        })
+        .collect();
+
+    let mut table = Table::new();
+    table.add_row(row![format!("Count ({})", paths.len()), "Path"]);
+
+    for (idx, path) in paths.iter().enumerate() {
+        let path_cell = Cell::new(&path);
+        let count_cell = Cell::new_align(&(idx + 1).to_string(), Alignment::CENTER)
+            .with_style(Attr::ForegroundColor(color::RED));
+        table.add_row(row![count_cell, path_cell]);
+    }
+
+    table.printstd();
+}
